@@ -56,6 +56,7 @@ end
 
 function cart_entity:on_activate(staticdata, dtime_s)
 	self.object:set_armor_groups({immortal=1})
+	self.attached_items = {} -- needed to stop itemcount glitch
 	if string.sub(staticdata, 1, string.len("return")) ~= "return" then
 		return
 	end
