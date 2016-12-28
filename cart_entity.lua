@@ -183,8 +183,10 @@ local function rail_on_step(self, dtime)
 
 		if self.count > 10 then
 			minetest.add_item(self.object:getpos(), "carts:cart")
-			minetest.sound_stop(self.sound_handle)
 			self.object:remove()
+			if self.sound_handle then
+				minetest.sound_stop(self.sound_handle)
+			end
 			return
 		end
 
