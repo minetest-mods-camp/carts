@@ -1,3 +1,5 @@
+
+-- is mesecons enabled ?
 local HAVE_MESECONS_ENABLED = minetest.get_modpath("mesecons")
 if HAVE_MESECONS_ENABLED then
 	dofile(minetest.get_modpath("carts") .. "/detector.lua")
@@ -32,6 +34,12 @@ function cart_entity:on_rightclick(clicker)
 	elseif not self.driver then
 		self.driver = player_name
 		carts:manage_attachment(clicker, self.object)
+
+		if default.player_set_animation then
+			-- player_api(/default) does not update the animation
+			-- when the player is attached, reset to default animation
+			default.player_set_animation(clicker, "stand")
+		end
 	end
 end
 
@@ -42,7 +50,7 @@ function cart_entity:on_activate(staticdata, dtime_s)
 		return
 	end
 	local data = minetest.deserialize(staticdata)
-	if not data or type(data) ~= "table" then
+	if type(data) ~= "table" then
 		return
 	end
 	self.railtype = data.railtype
@@ -56,6 +64,13 @@ function cart_entity:get_staticdata()
 		railtype = self.railtype,
 		old_dir = self.old_dir
 	})
+end
+
+-- 0.5.x and later: When the driver leaves
+function cart_entity:on_detach_child(child)
+	if child and child:get_player_name() == self.driver then
+		self.driver = nil
+	end
 end
 
 function cart_entity:on_punch(puncher, time_from_last_punch, tool_capabilities, direction)
@@ -88,7 +103,7 @@ function cart_entity:on_punch(puncher, time_from_last_punch, tool_capabilities, 
 			local player = minetest.get_player_by_name(self.driver)
 			carts:manage_attachment(player, nil)
 		end
-		for _,obj_ in ipairs(self.attached_items) do
+		for _, obj_ in ipairs(self.attached_items) do
 			if obj_ then
 				obj_:set_detach()
 			end
@@ -226,17 +241,23 @@ local function rail_on_step(self, dtime)
 
 	local stop_wiggle = false
 	if self.old_pos and same_dir then
-		-- Detection for "skipping" nodes
-		local found_path = carts:pathfinder(
-			pos, self.old_pos, self.old_dir, ctrl, self.old_switch, self.railtype
+		-- Detection for "skipping" nodes (perhaps use average dtime?)
+		-- It's sophisticated enough to take the acceleration in account
+		local acc = self.object:get_acceleration()
+		local distance = dtime * (v3_len(vel) + 0.5 * dtime * v3_len(acc))
+
+		local new_pos, new_dir = carts:pathfinder(
+			pos, self.old_pos, self.old_dir, distance, ctrl,
+			self.old_switch, self.railtype
 		)
 
-		if not found_path then
-			-- No rail found: reset back to the expected position
-			pos = vector.new(self.old_pos)
+		if new_pos then
+			-- No rail found: set to the expected position
+			pos = new_pos
 			update.pos = true
+			cart_dir = new_dir
 		end
-	elseif self.old_pos and cart_dir.y ~= -1 and not self.punched then
+	elseif self.old_pos and self.old_dir.y ~= 1 and not self.punched then
 		-- Stop wiggle
 		stop_wiggle = true
 	end
@@ -248,12 +269,14 @@ local function rail_on_step(self, dtime)
 	local dir, switch_keys = carts:get_rail_direction(
 		pos, cart_dir, ctrl, self.old_switch, self.railtype
 	)
+	local dir_changed = not vector.equals(dir, self.old_dir)
 
 	local new_acc = {x=0, y=0, z=0}
 	if stop_wiggle or vector.equals(dir, {x=0, y=0, z=0}) then
 		vel = {x = 0, y = 0, z = 0}
 		local pos_r = vector.round(pos)
-		if not carts:is_rail(pos_r, self.railtype) then
+		if not carts:is_rail(pos_r, self.railtype)
+				and self.old_pos then
 			pos = self.old_pos
 		elseif not stop_wiggle then
 			pos = pos_r
@@ -264,7 +287,7 @@ local function rail_on_step(self, dtime)
 		update.vel = true
 	else
 		-- Direction change detected
-		if not vector.equals(dir, self.old_dir) then
+		if dir_changed then
 			vel = vector.multiply(dir, math.abs(vel.x + vel.z))
 			update.vel = true
 			if dir.y ~= self.old_dir.y then
@@ -321,7 +344,7 @@ local function rail_on_step(self, dtime)
 	end
 
 	self.object:set_acceleration(new_acc)
-	self.old_pos = vector.new(pos)
+	self.old_pos = vector.round(pos)
 	if not vector.equals(dir, {x=0, y=0, z=0}) and not stop_wiggle then
 		self.old_dir = vector.new(dir)
 	end
@@ -368,9 +391,15 @@ local function rail_on_step(self, dtime)
 	end
 	self.object:set_animation(anim, 1, 0)
 
-	self.object:set_velocity(vel)
+	if update.vel then
+		self.object:set_velocity(vel)
+	end
 	if update.pos then
-		self.object:set_pos(pos)
+		if dir_changed then
+			self.object:set_pos(pos)
+		else
+			self.object:move_to(pos)
+		end
 	end
 
 	-- call event handler
@@ -393,7 +422,8 @@ minetest.register_craftitem("carts:cart", {
 		local node = minetest.get_node(under)
 		local udef = minetest.registered_nodes[node.name]
 		if udef and udef.on_rightclick and
-				not (placer and placer:get_player_control().sneak) then
+				not (placer and placer:is_player() and
+				placer:get_player_control().sneak) then
 			return udef.on_rightclick(under, node, placer, itemstack,
 				pointed_thing) or itemstack
 		end
