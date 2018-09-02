@@ -57,7 +57,7 @@ function cart_entity:on_activate(staticdata, dtime_s)
 	self.old_dir = data.old_dir or self.old_dir
 	self.old_pos = data.old_pos or self.old_pos
 	-- Correct the position when the cart drives further after the last 'step()'
-	if self.old_pos and boost_cart:is_rail(self.old_pos, self.railtype) then
+	if self.old_pos and carts:is_rail(self.old_pos, self.railtype) then
 		self.object:set_pos(self.old_pos)
 	end
 end
