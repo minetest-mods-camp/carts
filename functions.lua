@@ -6,6 +6,12 @@ function carts:get_sign(z)
 	end
 end
 
+-- 0.4.17 or 5.0 check
+local y_off = 6
+if minetest.registered_nodes["default:permafrost"] then
+	y_off = -4.5
+end
+
 function carts:manage_attachment(player, obj)
 	if not player then
 		return
@@ -20,7 +26,7 @@ function carts:manage_attachment(player, obj)
 	default.player_attached[player_name] = status
 
 	if status then
-		player:set_attach(obj, "", {x=0, y=6, z=0}, {x=0, y=0, z=0})
+		player:set_attach(obj, "", {x=0, y=y_off, z=0}, {x=0, y=0, z=0})
 		player:set_eye_offset({x=0, y=-4, z=0},{x=0, y=-4, z=0})
 	else
 		player:set_detach()
