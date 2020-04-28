@@ -1,3 +1,7 @@
+-- carts/cart_entity.lua
+
+-- support for MT game translation.
+local S = carts.get_translator
 
 -- is mesecons enabled ?
 local HAVE_MESECONS_ENABLED = minetest.get_modpath("mesecons")
@@ -6,12 +10,14 @@ if HAVE_MESECONS_ENABLED then
 end
 
 local cart_entity = {
-	physical = false, -- otherwise going uphill breaks
-	collisionbox = {-0.5, -0.5, -0.5, 0.5, 0.5, 0.5},
-	visual = "mesh",
-	mesh = "carts_cart.b3d",
-	visual_size = {x=1, y=1},
-	textures = {"carts_cart.png"},
+	initial_properties = {
+		physical = false, -- otherwise going uphill breaks
+		collisionbox = {-0.5, -0.5, -0.5, 0.5, 0.5, 0.5},
+		visual = "mesh",
+		mesh = "carts_cart.b3d",
+		visual_size = {x=1, y=1},
+		textures = {"carts_cart.png"},
+	},
 
 	driver = nil,
 	punched = false, -- used to re-send velocity and position
@@ -35,17 +41,14 @@ function cart_entity:on_rightclick(clicker)
 		self.driver = player_name
 		carts:manage_attachment(clicker, self.object)
 
-		if default.player_set_animation then
-			-- player_api(/default) does not update the animation
-			-- when the player is attached, reset to default animation
-			default.player_set_animation(clicker, "stand")
-		end
+		-- player_api does not update the animation
+		-- when the player is attached, reset to default animation
+		player_api.set_animation(clicker, "stand")
 	end
 end
 
 function cart_entity:on_activate(staticdata, dtime_s)
 	self.object:set_armor_groups({immortal=1})
-	self.attached_items = {} -- needed to stop itemcount glitch
 	if string.sub(staticdata, 1, string.len("return")) ~= "return" then
 		return
 	end
@@ -54,19 +57,15 @@ function cart_entity:on_activate(staticdata, dtime_s)
 		return
 	end
 	self.railtype = data.railtype
-	self.old_dir = data.old_dir or self.old_dir
-	self.old_pos = data.old_pos or self.old_pos
-	-- Correct the position when the cart drives further after the last 'step()'
-	if self.old_pos and carts:is_rail(self.old_pos, self.railtype) then
-		self.object:set_pos(self.old_pos)
+	if data.old_dir then
+		self.old_dir = data.old_dir
 	end
 end
 
 function cart_entity:get_staticdata()
 	return minetest.serialize({
 		railtype = self.railtype,
-		old_dir = self.old_dir,
-		old_pos = self.old_pos
+		old_dir = self.old_dir
 	})
 end
 
@@ -200,12 +199,13 @@ local function rail_on_step(self, dtime)
 		if self.count > 10 then
 			minetest.add_item(self.object:get_pos(), "carts:cart")
 			if self.sound_handle then
-				minetest.sound_stop(self.sound_handle)
+				local handle = self.sound_handle
+				self.sound_handle = nil
+				minetest.after(0.2, minetest.sound_stop, handle)
 			end
 			self.object:remove()
 			return
 		end
-
 	else
 		self.count = 0
 	end
@@ -418,7 +418,7 @@ end
 minetest.register_entity("carts:cart", cart_entity)
 
 minetest.register_craftitem("carts:cart", {
-	description = "Cart (Sneak+Click to pick up)",
+	description = S("Cart") .. "\n" .. S("(Sneak+Click to pick up)"),
 	inventory_image = minetest.inventorycube("carts_cart_top.png", "carts_cart_side.png", "carts_cart_side.png"),
 	wield_image = "carts_cart_side.png",
 	on_place = function(itemstack, placer, pointed_thing)
@@ -444,7 +444,7 @@ minetest.register_craftitem("carts:cart", {
 		end
 
 		minetest.sound_play({name = "default_place_node_metal", gain = 0.5},
-			{pos = pointed_thing.above})
+			{pos = pointed_thing.above}, true)
 
 		if not (creative and creative.is_enabled_for
 				and creative.is_enabled_for(placer:get_player_name())) then

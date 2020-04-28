@@ -6,7 +6,8 @@ itself is based on (and fully compatible with) the carts mod [2].
 
 The model was originally designed by stujones11 [3] (CC-0).
 
-Cart textures are based on original work from PixelBOX (WTFPL).
+Cart textures are based on original work from PixelBOX by Gambit (permissive
+license).
 
 
 [1] https://github.com/SmallJoker/boost_cart/
@@ -21,9 +22,8 @@ Features
 - Rail junction switching with the 'right-left' walking keys
 - Handbrake with the 'back' key
 
-
 Additions by TenPlus1
 -----------------------
 - Mesecon detector rail added
 - 10 second cart drop when player or item not inside
-- Alias' set to replace older boost_cart mod
+- Alias' set to replace rails from boost_cart mod
