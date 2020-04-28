@@ -49,6 +49,7 @@ end
 
 function cart_entity:on_activate(staticdata, dtime_s)
 	self.object:set_armor_groups({immortal=1})
+	self.attached_items = {} -- needed to stop itemcount glitch
 	if string.sub(staticdata, 1, string.len("return")) ~= "return" then
 		return
 	end
@@ -359,7 +360,7 @@ local function rail_on_step(self, dtime)
 		for _, obj_ in pairs(minetest.get_objects_inside_radius(pos, 1)) do
 			if not obj_:is_player() and
 					obj_:get_luaentity() and
-					not obj_:get_luaentity().physical_state and
+--					not obj_:get_luaentity().physical_state and
 					obj_:get_luaentity().name == "__builtin:item" then
 
 				obj_:set_attach(self.object, "", {x=0, y=0, z=0}, {x=0, y=0, z=0})
