@@ -1,3 +1,5 @@
+local is_50 = minetest.get_translator
+
 function carts:get_sign(z)
 	if z == 0 then
 		return 0
@@ -15,7 +17,12 @@ function carts:manage_attachment(player, obj)
 	if obj and player:get_attach() == obj then
 		return
 	end
-	player_api.player_attached[player_name] = status
+
+	if is_50 then
+		player_api.player_attached[player_name] = status
+	else
+		default.player_attached[player_name] = status
+	end
 
 	if status then
 		player:set_attach(obj, "", {x=0, y=-4.5, z=0}, {x=0, y=0, z=0})
@@ -23,7 +30,12 @@ function carts:manage_attachment(player, obj)
 
 		-- player_api does not update the animation
 		-- when the player is attached, reset to default animation
-		player_api.set_animation(player, "stand")
+		if is_50 then
+			player_api.set_animation(player, "stand")
+		else
+			default.player_set_animation(player, "stand")
+		end
+
 	else
 		player:set_detach()
 		player:set_eye_offset({x=0, y=0, z=0},{x=0, y=0, z=0})
