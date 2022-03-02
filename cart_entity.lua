@@ -29,6 +29,20 @@ local cart_entity = {
 	attached_items = {}
 }
 
+
+-- cache creative
+local creative = minetest.settings:get_bool("creative_mode")
+
+function is_creative_enabled_for(name)
+
+	if creative or minetest.check_player_privs(name, {creative = true}) then
+		return true
+	end
+
+	return false
+end
+
+
 function cart_entity:on_rightclick(clicker)
 	if not clicker or not clicker:is_player() then
 		return
@@ -111,15 +125,18 @@ function cart_entity:on_punch(puncher, time_from_last_punch, tool_capabilities, 
 		end
 		-- Pick up cart
 		local inv = puncher:get_inventory()
-		if not (creative and creative.is_enabled_for
-				and creative.is_enabled_for(puncher:get_player_name()))
-				or not inv:contains_item("main", "carts:cart") then
+
+		if not is_creative_enabled_for(puncher:get_player_name())
+		or not inv:contains_item("main", "carts:cart") then
+
 			local leftover = inv:add_item("main", "carts:cart")
+
 			-- If no room in inventory add a replacement cart to the world
 			if not leftover:is_empty() then
 				minetest.add_item(self.object:get_pos(), leftover)
 			end
 		end
+
 		self.object:remove()
 		return
 	end
@@ -449,8 +466,8 @@ minetest.register_craftitem("carts:cart", {
 		minetest.sound_play({name = "default_place_node_metal", gain = 0.5},
 			{pos = pointed_thing.above}, true)
 
-		if not (creative and creative.is_enabled_for
-				and creative.is_enabled_for(placer:get_player_name())) then
+		if not is_creative_enabled_for(placer:get_player_name()) then
+
 			itemstack:take_item()
 		end
 		return itemstack
