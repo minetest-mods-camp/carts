@@ -1,4 +1,4 @@
-local is_50 = minetest.get_translator
+local is_50 = minetest.get_modpath("player_api")
 
 function carts:get_sign(z)
 	if z == 0 then
