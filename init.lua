@@ -46,3 +46,5 @@ if minetest.global_exists("dungeon_loot") then
 		name = "carts:rail", chance = 0.35, count = {1, 6}
 	})
 end
+
+print("[MOD] Carts loaded")
